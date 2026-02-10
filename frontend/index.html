@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AURA — Autonomous Unified Risk Analyzer</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 920px; margin: 40px auto; padding: 0 16px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    .card { border: 1px solid #ddd; border-radius: 14px; padding: 16px; margin: 14px 0; }
+    .pill { display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid #ccc; }
+    pre { white-space: pre-wrap; word-break: break-word; margin:0; }
+    button { padding: 10px 14px; border-radius: 12px; border: 1px solid #ccc; cursor: pointer; }
+    .big { font-size: 22px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>AURA</h1>
+  <p class="pill">Defensive • Deployable • FastAPI • OSV</p>
+
+  <div class="card">
+    <div class="row">
+      <input id="file" type="file" />
+      <button id="go">Scan</button>
+      <span id="status" class="pill">Idle</span>
+    </div>
+    <p style="margin-top:10px;">Upload <b>requirements.txt</b>, <b>pyproject.toml</b>, or <b>package-lock.json</b>.</p>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="big">Risk Score:</div>
+      <div id="score" class="big">—</div>
+    </div>
+    <p id="summary">No scan yet.</p>
+  </div>
+
+  <div class="card">
+    <h3>Raw JSON</h3>
+    <pre id="out">{}</pre>
+  </div>
+
+  <script>
+    const API = (location.hostname === "localhost") ? "http://localhost:8000" : "";
+    const statusEl = document.getElementById("status");
+    const outEl = document.getElementById("out");
+    const scoreEl = document.getElementById("score");
+    const summaryEl = document.getElementById("summary");
+
+    document.getElementById("go").onclick = async () => {
+      const f = document.getElementById("file").files[0];
+      if (!f) return alert("Pick a file first.");
+
+      statusEl.textContent = "Scanning…";
+      scoreEl.textContent = "…";
+      summaryEl.textContent = "Working…";
+      outEl.textContent = "{}";
+
+      const fd = new FormData();
+      fd.append("file", f);
+
+      const res = await fetch(`${API}/scan`, { method: "POST", body: fd });
+      const json = await res.json();
+
+      outEl.textContent = JSON.stringify(json, null, 2);
+      if (json.ok) {
+        statusEl.textContent = "Done";
+        scoreEl.textContent = `${json.risk_score}/100`;
+        summaryEl.textContent = json.summary;
+      } else {
+        statusEl.textContent = "Error";
+        scoreEl.textContent = "—";
+        summaryEl.textContent = json.error || "Unknown error";
+      }
+    };
+  </script>
+</body>
+</html>
